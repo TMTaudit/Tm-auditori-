@@ -1,165 +1,35 @@
-<!-- 🔥 KÄYNNISTÄ-TARKISTUS NAPPI (TAATTU TOIMINTA) -->
-<button id="startBtn" style="
-    padding: 15px 25px;
-    background: #4CAF50;
-    color: white;
-    border: none;
-    border-radius: 6px;
-    font-size: 18px;
-    margin-top: 20px;
-">
-    Käynnistä tarkistus
-</button>
-
-<!-- 🔥 OVERLAY + ANIMAATIO + LASKURI + AJASTIN -->
-<div id="loadingOverlay" style="
-    position: fixed;
-    top: 0; left: 0;
-    width: 100vw; height: 100vh;
-    background: rgba(0,0,0,0.75);
-    color: #fff;
-    display: none;
-    align-items: center;
-    justify-content: center;
-    flex-direction: column;
-    z-index: 9999;
-    font-family: Arial, sans-serif;
-">
-    <div class="spinner" style="
-        border: 8px solid #ccc;
-        border-top: 8px solid #4CAF50;
-        border-radius: 50%;
-        width: 70px;
-        height: 70px;
-        animation: spin 1s linear infinite;
-        margin-bottom: 25px;
-    "></div>
-
-    <div id="loadingDynamicText" style="font-size: 22px; margin-bottom: 10px;">
-        Valmistellaan tarkistusta…
-    </div>
-
-    <div id="loadingCounter" style="font-size: 18px; opacity: 0.9;">
-        0 / 0 ilmoitusta
-    </div>
-
-    <div id="loadingTimer" style="font-size: 16px; margin-top: 15px; opacity: 0.8;">
-        Aikaa kulunut: 0.0 s
-    </div>
-</div>
-
-<style>
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-</style>
-
 <script>
-/* -------------------------------------------------
-   🔧 DEBUG MODE
-   ------------------------------------------------- */
-let debugMode = false;   // 🔸 käyttäjän valinnan mukaan OFF
+/* ============================
+   🔥 GLOBAALI VIRHELOKITUS
+   Näyttää virheen suoraan ruudulla,
+   ei tarvita konsolia.
+   ============================ */
 
-/* -------------------------------------------------
-   🧭 AJASTIN + UI
-   ------------------------------------------------- */
-let timerStart = 0;
-let timerInterval = null;
+window.onerror = function(message, source, lineno, colno, error) {
+    let details = `
+VIRHE OHJELMASSA:
 
-function showLoading() {
-    console.log("%c[APP] Overlay näkyviin", "color: yellow");
+${message}
 
-    document.getElementById("loadingOverlay").style.display = "flex";
-    timerStart = Date.now();
+Lähde: ${source}
+Rivi: ${lineno}:${colno}
 
-    timerInterval = setInterval(() => {
-        const t = ((Date.now() - timerStart) / 1000).toFixed(1);
-        document.getElementById("loadingTimer").innerText = `Aikaa kulunut: ${t} s`;
-    }, 100);
-}
+Tämä tuli suoraan sovelluksesta,
+ei tarvitse avata konsolia.
+    `;
+    alert(details);
+    return true; 
+};
 
-function updateLoadingText(msg) {
-    document.getElementById("loadingDynamicText").innerText = msg;
-    if (debugMode) console.log("%c[TEXT] " + msg, "color: cyan");
-}
+window.addEventListener("unhandledrejection", function(event) {
+    let details = `
+ASYNC / PROMISE -VIRHE:
 
-function updateCounter(current, total) {
-    document.getElementById("loadingCounter").innerText = `${current} / ${total} ilmoitusta`;
-    if (debugMode) console.log(`%c[COUNT] ${current}/${total}`, "color: orange");
-}
+${event.reason}
 
-function hideLoading() {
-    console.log("%c[APP] Overlay piilotettu", "color: lightgreen");
-    clearInterval(timerInterval);
-    document.getElementById("loadingOverlay").style.display = "none";
-}
-
-/* -------------------------------------------------
-   🔍 PÄÄAUDIT (EI KAAdu — sisältää try/catch)
-   ------------------------------------------------- */
-async function startAudit() {
-    try {
-        showLoading();
-        updateLoadingText("Haetaan työpaikkoja…");
-
-        const listUrl =
-            "https://api.allorigins.win/raw?url=https://tyomarkkinatori.fi/henkiloasiakkaat/avoimet-tyopaikat?pa=MAX_1_DAY&r=06";
-
-        if (debugMode) console.log("%c[FETCH] Lista: " + listUrl, "color: #7FDBFF");
-
-        const html = await fetch(listUrl).then(r => r.text());
-
-        const links = [...html.matchAll(/href="(\/avoimet-tyopaikat\/[^"]+)"/g)]
-            .map(m => "https://tyomarkkinatori.fi" + m[1]);
-
-        const total = links.length;
-        updateCounter(0, total);
-        updateLoadingText("Aloitetaan tarkistus…");
-
-        console.log("%c[LÖYDETTY] " + total + " ilmoitusta", "color: #00FF7F");
-
-        /* ---------------------------
-           KÄYDÄÄN ILMOITUKSET LÄPI
-        ---------------------------- */
-        for (let i = 0; i < total; i++) {
-            try {
-                const url = links[i];
-                updateCounter(i + 1, total);
-                updateLoadingText(`Tarkistetaan ilmoitusta…`);
-
-                if (debugMode)
-                    console.log(`%c[JOB ${i+1}] ${url}`, "color: #FFD700");
-
-                // 🔽 Tässä vaiheessa haettaisiin html
-                await new Promise(r => setTimeout(r, 200)); // simulaatio
-            }
-
-            catch (err) {
-                console.error("%c[VIRHE YKSI-ILMOITUS]", "color:red", err);
-            }
-        }
-
-        updateLoadingText("Valmis!");
-        await new Promise(r => setTimeout(r, 400));
-        hideLoading();
-    }
-
-    catch (error) {
-        console.error("%c[KOKONAISVIRHE]", "color:red; font-size:16px", error);
-        hideLoading();
-        alert("Tarkistus keskeytyi virheeseen (katso konsoli).");
-    }
-}
-
-/* -------------------------------------------------
-   ▶️ NAPPIPAINALLUS
-   ------------------------------------------------- */
-document.addEventListener("DOMContentLoaded", () => {
-    document.getElementById("startBtn").addEventListener("click", () => {
-        console.clear();
-        console.log("%c==== AUDIT KÄYNNISTETTY ====", "background:#222; color:#4CAF50");
-        startAudit();
-    });
+Ei tarvitse konsolia,
+virhe näkyy tässä.
+    `;
+    alert(details);
 });
 </script>
