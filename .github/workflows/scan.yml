@@ -1,0 +1,66 @@
+name: Audit Pirkanmaa Jobs
+
+on:
+  schedule:
+    - cron: "0 0 * * *"      # ajetaan joka yö klo 00:00
+  workflow_dispatch:          # voit ajaa manuaalisesti
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repo
+      uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install beautifulsoup4 requests
+
+    - name: Run scanner
+      run: python scan.py
+
+    - name: Load report
+      id: report
+      run: |
+        ERRORS=$(jq '.jobs | map(select(.errors | length > 0)) | length' latest_report.json)
+        echo "found_errors=$ERRORS" >> $GITHUB_OUTPUT
+
+    - name: Commit report
+      run: |
+        git config --local user.email "actions@github.com"
+        git config --local user.name "GitHub Actions"
+        git add latest_report.json
+        git commit -m "Daily report update"
+        git push
+      continue-on-error: true
+
+    - name: Send email if errors found
+      if: steps.report.outputs.found_errors != '0'
+      uses: dawidd6/action-send-mail@v3
+      with:
+        server_address: smtp.gmail.com
+        server_port: 465
+        username: ${{ secrets.GMAIL_USER }}
+        password: ${{ secrets.GMAIL_APP_PASSWORD }}
+        subject: "TM-auditori: Virheitä löytyi ilmoituksista"
+        to: "mikko.hallamaa@gmail.com"
+        from: "TM-Auditori <${{ secrets.GMAIL_USER }}>"
+        secure: true
+        body: |
+          Hei Mikko!
+
+          TM-auditori havaitsi virheitä työpaikkailmoituksissa.
+
+          Raportti löytyy täältä:
+          https://github.com/TMTaudit/Tm-auditori-/blob/main/latest_report.json
+
+          Mukavat terveisiä,
+          TM‑Auditointijärjestelmä
+          
