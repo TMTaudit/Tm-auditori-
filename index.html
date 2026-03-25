@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="fi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TM-auditori</title>
+
+    <!-- Manifest PWA:lle -->
+    manifest.json
+
+    <!-- Perustyylit -->
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 2rem;
+            background: #f5f5f5;
+        }
+        h1 { text-align: center; }
+        button {
+            width: 100%;
+            padding: 1rem;
+            margin-top: 1rem;
+            font-size: 1.2rem;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            background: #0066cc;
+            color: white;
+        }
+        #summary {
+            margin-top: 2rem;
+            padding: 1rem;
+            background: white;
+            border-radius: 8px;
+        }
+    </style>
+</head>
+<body>
+
+<h1>TM‑auditori</h1>
+
+<button id="startBtn">Käynnistä tarkistus</button>
+
+<div id="summary" style="display:none;">
+    <p>Tarkistettu ilmoituksia: <span id="count">0</span></p>
+    <p>Havaittuja virheitä: <span id="errors">0</span></p>
+</div>
+
+<button id="sendBtn" style="display:none; background:#009933;">
+    Lähetä Outlookiin
+</button>
+
+<script>
+// Simuloitu laskuri – oikea logiikka voidaan myöhemmin lisätä
+let checked = 0;
+let errors = 0;
+
+document.getElementById("startBtn").onclick = () => {
+    checked = Math.floor(Math.random() * 20) + 5;     // esimerkkidataa
+    errors = Math.floor(Math.random() * 5);
+
+    document.getElementById("count").textContent = checked;
+    document.getElementById("errors").textContent = errors;
+
+    document.getElementById("summary").style.display = "block";
+    document.getElementById("sendBtn").style.display = "block";
+};
+
+document.getElementById("sendBtn").onclick = () => {
+    const subject = encodeURIComponent("TM‑auditointi – yhteenveto");
+    const body = encodeURIComponent(
+        `Tarkistettu: ${checked} ilmoitusta\nVirheitä: ${errors}`
+    );
+    window.location.href = `mailto:mikko.hallamaa@tampere.fi?subject=${subject}&body=${body}`;
+};
+
+// Rekisteröidään service worker PWA:ta varten
+if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("service-worker.js");
+}
+</script>
+
+</body>
+</html>
