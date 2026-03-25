@@ -1,4 +1,17 @@
-<!-- 🔥 LOADING OVERLAY + ANIMAATIO + LASKURI + AJASTIN 🔥 -->
+<!-- 🔥 KÄYNNISTÄ-TARKISTUS NAPPI (TAATTU TOIMINTA) -->
+<button id="startBtn" style="
+    padding: 15px 25px;
+    background: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 18px;
+    margin-top: 20px;
+">
+    Käynnistä tarkistus
+</button>
+
+<!-- 🔥 OVERLAY + ANIMAATIO + LASKURI + AJASTIN -->
 <div id="loadingOverlay" style="
     position: fixed;
     top: 0; left: 0;
@@ -43,16 +56,23 @@
 </style>
 
 <script>
-// ----------------------------
-// 🔥 LOADING UI TOIMINNOT
-// ----------------------------
+/* -------------------------------------------------
+   🔧 DEBUG MODE
+   ------------------------------------------------- */
+let debugMode = false;   // 🔸 käyttäjän valinnan mukaan OFF
+
+/* -------------------------------------------------
+   🧭 AJASTIN + UI
+   ------------------------------------------------- */
 let timerStart = 0;
 let timerInterval = null;
 
 function showLoading() {
-    document.getElementById("loadingOverlay").style.display = "flex";
+    console.log("%c[APP] Overlay näkyviin", "color: yellow");
 
+    document.getElementById("loadingOverlay").style.display = "flex";
     timerStart = Date.now();
+
     timerInterval = setInterval(() => {
         const t = ((Date.now() - timerStart) / 1000).toFixed(1);
         document.getElementById("loadingTimer").innerText = `Aikaa kulunut: ${t} s`;
@@ -61,64 +81,85 @@ function showLoading() {
 
 function updateLoadingText(msg) {
     document.getElementById("loadingDynamicText").innerText = msg;
+    if (debugMode) console.log("%c[TEXT] " + msg, "color: cyan");
 }
 
 function updateCounter(current, total) {
     document.getElementById("loadingCounter").innerText = `${current} / ${total} ilmoitusta`;
+    if (debugMode) console.log(`%c[COUNT] ${current}/${total}`, "color: orange");
 }
 
 function hideLoading() {
+    console.log("%c[APP] Overlay piilotettu", "color: lightgreen");
     clearInterval(timerInterval);
     document.getElementById("loadingOverlay").style.display = "none";
 }
 
-// ----------------------------
-// 🔥 PÄÄAUDIT -ESIMERKKI
-// ----------------------------
+/* -------------------------------------------------
+   🔍 PÄÄAUDIT (EI KAAdu — sisältää try/catch)
+   ------------------------------------------------- */
 async function startAudit() {
-    showLoading();
-    updateLoadingText("Haetaan työpaikkoja…");
+    try {
+        showLoading();
+        updateLoadingText("Haetaan työpaikkoja…");
 
-    // 🔹 1) Haetaan listaus
-    const listUrl = "https://api.allorigins.win/raw?url=https://tyomarkkinatori.fi/henkiloasiakkaat/avoimet-tyopaikat?pa=MAX_1_DAY&r=06";
-    const html = await fetch(listUrl).then(r => r.text());
+        const listUrl =
+            "https://api.allorigins.win/raw?url=https://tyomarkkinatori.fi/henkiloasiakkaat/avoimet-tyopaikat?pa=MAX_1_DAY&r=06";
 
-    // 🔹 2) Parsitaan linkit
-    const links = [...html.matchAll(/href="(\/avoimet-tyopaikat\/[^"]+)"/g)]
-        .map(m => "https://tyomarkkinatori.fi" + m[1]);
+        if (debugMode) console.log("%c[FETCH] Lista: " + listUrl, "color: #7FDBFF");
 
-    const total = links.length;
-    updateLoadingText("Aloitetaan ilmoitusten tarkistus…");
-    updateCounter(0, total);
+        const html = await fetch(listUrl).then(r => r.text());
 
-    // 🔹 3) Käydään läpi yksi kerrallaan
-    for (let i = 0; i < total; i++) {
-        updateLoadingText(`Tarkistetaan ilmoitusta…`);
-        updateCounter(i + 1, total);
+        const links = [...html.matchAll(/href="(\/avoimet-tyopaikat\/[^"]+)"/g)]
+            .map(m => "https://tyomarkkinatori.fi" + m[1]);
 
-        // Simuloidaan sivun latausta (voit poistaa tämän)
-        await new Promise(r => setTimeout(r, 200));
+        const total = links.length;
+        updateCounter(0, total);
+        updateLoadingText("Aloitetaan tarkistus…");
 
-        // ---- Tähän tulee sinun oma tarkistuskoodi ----
-        // esim:
-        // const jobHtml = await fetch("https://api.allorigins.win/raw?url=" + links[i]).then(r => r.text());
-        // ... regex-tarkistukset ...
-        // ... tulosten tallennus ...
+        console.log("%c[LÖYDETTY] " + total + " ilmoitusta", "color: #00FF7F");
+
+        /* ---------------------------
+           KÄYDÄÄN ILMOITUKSET LÄPI
+        ---------------------------- */
+        for (let i = 0; i < total; i++) {
+            try {
+                const url = links[i];
+                updateCounter(i + 1, total);
+                updateLoadingText(`Tarkistetaan ilmoitusta…`);
+
+                if (debugMode)
+                    console.log(`%c[JOB ${i+1}] ${url}`, "color: #FFD700");
+
+                // 🔽 Tässä vaiheessa haettaisiin html
+                await new Promise(r => setTimeout(r, 200)); // simulaatio
+            }
+
+            catch (err) {
+                console.error("%c[VIRHE YKSI-ILMOITUS]", "color:red", err);
+            }
+        }
+
+        updateLoadingText("Valmis!");
+        await new Promise(r => setTimeout(r, 400));
+        hideLoading();
     }
 
-    updateLoadingText("Valmis!");
-    await new Promise(r => setTimeout(r, 500));
-
-    hideLoading();
+    catch (error) {
+        console.error("%c[KOKONAISVIRHE]", "color:red; font-size:16px", error);
+        hideLoading();
+        alert("Tarkistus keskeytyi virheeseen (katso konsoli).");
+    }
 }
 
-// ----------------------------
-// 🔥 NAPPIPAINALLUS
-// ----------------------------
+/* -------------------------------------------------
+   ▶️ NAPPIPAINALLUS
+   ------------------------------------------------- */
 document.addEventListener("DOMContentLoaded", () => {
-    const btn = document.getElementById("startBtn");
-    if (!btn) return;
-
-    btn.addEventListener("click", () => startAudit());
+    document.getElementById("startBtn").addEventListener("click", () => {
+        console.clear();
+        console.log("%c==== AUDIT KÄYNNISTETTY ====", "background:#222; color:#4CAF50");
+        startAudit();
+    });
 });
 </script>
