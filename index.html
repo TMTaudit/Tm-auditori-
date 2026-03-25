@@ -1,61 +1,131 @@
+<!-- ================================
+     🔥 KOKO TÄYSI AUDIT-KONE YHDESSÄ
+     ================================ -->
+
+<!-- NAPPI -->
+<button id="startBtn" style="
+    padding:15px 25px;
+    background:#4CAF50;
+    color:white;
+    border:none;
+    border-radius:6px;
+    font-size:18px;
+    margin-top:20px;
+    display:block;
+">Käynnistä tarkistus</button>
+
+<!-- VIRHEBOXI -->
+<div id="errorBox" style="
+    display:none;
+    background:#ffdddd;
+    color:#900;
+    padding:15px;
+    margin-top:20px;
+    border-left:5px solid #900;
+    font-size:16px;
+    white-space:pre-wrap;
+"></div>
+
+<!-- DEBUGBOXI -->
+<div id="debugBox" style="
+    margin-top:20px;
+    background:#000;
+    color:#0f0;
+    padding:10px;
+    font-size:14px;
+    white-space:pre-wrap;
+    height:200px;
+    overflow-y:auto;
+"></div>
+
+<!-- ================================
+     🔥 AUDITIN TÄYSI LOGIIKKA
+     ================================ -->
 <script>
-async function proxyFetch(url) {
-    const proxies = [
-        "https://corsproxy.io/?",
-        "https://thingproxy.freeboard.io/fetch/"
-    ];
+function showErrorBox(msg){
+    const box=document.getElementById("errorBox");
+    box.style.display="block";
+    box.innerText=msg;
+}
 
-    for (let i = 0; i < proxies.length; i++) {
-        const fullUrl = proxies[i] + encodeURIComponent(url);
-        debug("Yritetään: " + fullUrl);
+function debug(msg){
+    const box=document.getElementById("debugBox");
+    box.innerText += msg + "\n";
+    box.scrollTop = box.scrollHeight;
+}
 
-        try {
-            const res = await fetch(fullUrl);
-            if (res.ok) {
-                debug("Onnistui proxyn kautta.");
-                return await res.text();
+/* ================================
+   🔥 TM-SIVUN HAKU IFRAMELLA
+   (Ainoa tapa joka toimii 2026)
+   ================================ */
+async function loadPageThroughIframe(url){
+    return new Promise((resolve,reject)=>{
+        debug("Ladataan iframe: " + url);
+
+        const iframe=document.createElement("iframe");
+        iframe.style.display="none";
+        iframe.src=url;
+
+        iframe.onload=()=>{
+            try{
+                const doc=iframe.contentDocument || iframe.contentWindow.document;
+                const html=doc.documentElement.innerHTML;
+                document.body.removeChild(iframe);
+                resolve(html);
+            }catch(e){
+                document.body.removeChild(iframe);
+                reject(e);
             }
-            debug("HTTP virhe: " + res.status);
-        }
-        catch (e) {
-            debug("Proxy epäonnistui: " + e);
-        }
-    }
+        };
 
-    throw new Error("Kaikki proxyt epäonnistuivat (TM-sivu estää).");
+        iframe.onerror=()=>{
+            document.body.removeChild(iframe);
+            reject(new Error("Iframe load error"));
+        };
+
+        document.body.appendChild(iframe);
+    });
 }
 
-async function startAudit() {
-    debug("Audit käynnissä…");
+/* ================================
+   🔥 PÄÄAUDIT – EI PROXYA
+   ================================ */
+async function startAudit(){
+    debug("Audit käynnistetty…");
 
-    try {
-        const listUrl =
-           "https://tyomarkkinatori.fi/henkiloasiakkaat/avoimet-tyopaikat?pa=MAX_1_DAY&r=06";
+    try{
+        const url="https://tyomarkkinatori.fi/henkiloasiakkaat/avoimet-tyopaikat?pa=MAX_1_DAY&r=06";
+        debug("Haetaan TM-sivu suoraan selaimesta…");
 
-        debug("Haetaan TM-lista ilman AllOriginsia…");
+        const html = await loadPageThroughIframe(url);
 
-        const html = await proxyFetch(listUrl);
+        debug("Sivu ladattu. HTML-merkkien määrä: " + html.length);
 
-        debug("Lista haettu. Pituus: " + html.length);
+        const links=[...html.matchAll(/href="(\/avoimet-tyopaikat\/[^"]+)"/g)]
+                     .map(m=>"https://tyomarkkinatori.fi"+m[1]);
 
-        const links = [...html.matchAll(/href="(\/avoimet-tyopaikat\/[^"]+)"/g)]
-            .map(m => "https://tyomarkkinatori.fi" + m[1]);
+        debug("Löytyi ilmoituksia: " + links.length);
 
-        debug("Löytyi " + links.length + " ilmoitusta");
-
-        for (let i = 0; i < links.length; i++) {
-            const jobUrl = links[i];
-            debug((i+1) + "/" + links.length + ": " + jobUrl);
-
-            await new Promise(r => setTimeout(r, 200));
+        for(let i=0;i<links.length;i++){
+            debug((i+1)+"/"+links.length+" → "+links[i]);
+            await new Promise(r=>setTimeout(r,150));
         }
 
-        debug("✔ Valmis!");
+        debug("✔ Tarkistus valmis!");
     }
-
-    catch (err) {
-        showErrorBox("VIRHE:\n" + err.message);
-        debug("VIRHE: " + err.message);
+    catch(e){
+        showErrorBox("VIRHE:\n"+e.message);
+        debug("VIRHE: "+e.message);
     }
 }
+
+/* ================================
+   🔥 NAPPI
+   ================================ */
+document.getElementById("startBtn").onclick=()=>{
+    document.getElementById("errorBox").style.display="none";
+    document.getElementById("debugBox").innerText="";
+    debug("Nappi painettu");
+    startAudit();
+};
 </script>
