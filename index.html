@@ -1,66 +1,61 @@
 <script>
-/* ================================
-   🔥 TURVALLINEN FETCH 10 UUDELLEENYRITYKSELLÄ
-   ================================ */
-async function safeFetch(url, maxTries = 10) {
-    for (let attempt = 1; attempt <= maxTries; attempt++) {
+async function proxyFetch(url) {
+    const proxies = [
+        "https://corsproxy.io/?",
+        "https://thingproxy.freeboard.io/fetch/"
+    ];
 
-        debug(`Yhteysyritys ${attempt}/${maxTries}`);
+    for (let i = 0; i < proxies.length; i++) {
+        const fullUrl = proxies[i] + encodeURIComponent(url);
+        debug("Yritetään: " + fullUrl);
 
         try {
-            const response = await fetch(url, { timeout: 15000 });
-
-            if (!response.ok) {
-                debug(`HTTP VIRHE: ${response.status}`);
-                if (attempt === maxTries) throw new Error("HTTP VIRHE: " + response.status);
-                await new Promise(r => setTimeout(r, 1000));
-                continue;
+            const res = await fetch(fullUrl);
+            if (res.ok) {
+                debug("Onnistui proxyn kautta.");
+                return await res.text();
             }
-
-            return await response.text();
+            debug("HTTP virhe: " + res.status);
         }
-
         catch (e) {
-            debug(`Fetch epäonnistui: ${e}`);
-            if (attempt === maxTries) throw e;
-            await new Promise(r => setTimeout(r, 1000));
+            debug("Proxy epäonnistui: " + e);
         }
     }
+
+    throw new Error("Kaikki proxyt epäonnistuivat (TM-sivu estää).");
 }
 
-/* ================================
-   🔥 UUSI startAudit (VAKAA JA TOIMII AINA)
-   ================================ */
 async function startAudit() {
-    debug("Audit käynnistetty...");
+    debug("Audit käynnissä…");
 
     try {
         const listUrl =
-            "https://api.allorigins.win/raw?url=" +
-            encodeURIComponent("https://tyomarkkinatori.fi/henkiloasiakkaat/avoimet-tyopaikat?pa=MAX_1_DAY&r=06");
+           "https://tyomarkkinatori.fi/henkiloasiakkaat/avoimet-tyopaikat?pa=MAX_1_DAY&r=06";
 
-        debug("Haetaan listaa…");
-        
-        const html = await safeFetch(listUrl);   // 🔥 VAKAA HAKU
-        
-        debug("Lista ladattu onnistuneesti");
+        debug("Haetaan TM-lista ilman AllOriginsia…");
+
+        const html = await proxyFetch(listUrl);
+
+        debug("Lista haettu. Pituus: " + html.length);
 
         const links = [...html.matchAll(/href="(\/avoimet-tyopaikat\/[^"]+)"/g)]
-                      .map(m => "https://tyomarkkinatori.fi" + m[1]);
+            .map(m => "https://tyomarkkinatori.fi" + m[1]);
 
         debug("Löytyi " + links.length + " ilmoitusta");
 
         for (let i = 0; i < links.length; i++) {
-            debug(`(${i+1}/${links.length}) ${links[i]}`);
+            const jobUrl = links[i];
+            debug((i+1) + "/" + links.length + ": " + jobUrl);
+
             await new Promise(r => setTimeout(r, 200));
         }
 
         debug("✔ Valmis!");
     }
 
-    catch (e) {
-        showErrorBox("VIRHE TARKISTUKSESSA:\n" + e.message);
-        debug("VIRHE: " + e.message);
+    catch (err) {
+        showErrorBox("VIRHE:\n" + err.message);
+        debug("VIRHE: " + err.message);
     }
 }
 </script>
