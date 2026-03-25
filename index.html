@@ -1,93 +1,57 @@
-<!-- 🔥 TURVAKÄYNNISTIN – TAKAA ETTÄ NAPPI TOIMII AINA -->
-<button id="startBtn" style="
-    padding: 15px 25px;
-    background: #4CAF50;
-    color: white;
-    border: none;
-    border-radius: 6px;
-    font-size: 18px;
-    margin-top: 20px;
-    display: block;
-">
-    Käynnistä tarkistus
-</button>
-
-<!-- 🔥 VIRHEIKKUNA (NÄKYY PUHELIMESSA) -->
-<div id="errorBox" style="
-    display:none;
-    background:#ffdddd;
-    color:#900;
-    padding:15px;
-    margin-top:20px;
-    border-left:5px solid #900;
-    font-size:16px;
-    white-space:pre-wrap;
-"></div>
-
-<!-- 🔥 DEBUG-TEKSTI RUUDULLA (NÄKYY AINA) -->
-<div id="debugBox" style="
-    margin-top:20px;
-    background:#222;
-    color:#0f0;
-    padding:10px;
-    font-size:14px;
-    white-space:pre-wrap;
-    height:200px;
-    overflow-y:auto;
-"></div>
-
 <script>
-/* ===============================
-   🔥 VIRHELOKITUS – NÄKYY RUUDULLA
-   =============================== */
-function showErrorBox(text) {
-    document.getElementById("errorBox").style.display = "block";
-    document.getElementById("errorBox").innerText = text;
+/* ================================
+   🔥 TURVALLINEN FETCH 10 UUDELLEENYRITYKSELLÄ
+   ================================ */
+async function safeFetch(url, maxTries = 10) {
+    for (let attempt = 1; attempt <= maxTries; attempt++) {
+
+        debug(`Yhteysyritys ${attempt}/${maxTries}`);
+
+        try {
+            const response = await fetch(url, { timeout: 15000 });
+
+            if (!response.ok) {
+                debug(`HTTP VIRHE: ${response.status}`);
+                if (attempt === maxTries) throw new Error("HTTP VIRHE: " + response.status);
+                await new Promise(r => setTimeout(r, 1000));
+                continue;
+            }
+
+            return await response.text();
+        }
+
+        catch (e) {
+            debug(`Fetch epäonnistui: ${e}`);
+            if (attempt === maxTries) throw e;
+            await new Promise(r => setTimeout(r, 1000));
+        }
+    }
 }
 
-window.onerror = function(msg, src, line, col, err) {
-    showErrorBox("JAVASCRIPT-VIRHE:\n" + msg + "\n" + src + ":" + line);
-    return true;
-};
-
-window.addEventListener("unhandledrejection", function(event){
-    showErrorBox("ASYNC-VIRHE:\n" + event.reason);
-});
-
-/* ===============================
-   🔥 DEBUG TEKSTIT RUUDULLE
-   =============================== */
-function debug(text) {
-    const box = document.getElementById("debugBox");
-    box.innerText += text + "\n";
-    box.scrollTop = box.scrollHeight;
-}
-
-/* ===============================
-   🔥 TURVA-AUDIT (Aina käynnistyy)
-   =============================== */
+/* ================================
+   🔥 UUSI startAudit (VAKAA JA TOIMII AINA)
+   ================================ */
 async function startAudit() {
     debug("Audit käynnistetty...");
 
     try {
-        const url = "https://api.allorigins.win/raw?url=https://tyomarkkinatori.fi/henkiloasiakkaat/avoimet-tyopaikat?pa=MAX_1_DAY&r=06";
-        debug("Haetaan listaa:\n" + url);
+        const listUrl =
+            "https://api.allorigins.win/raw?url=" +
+            encodeURIComponent("https://tyomarkkinatori.fi/henkiloasiakkaat/avoimet-tyopaikat?pa=MAX_1_DAY&r=06");
 
-        const resp = await fetch(url);
-        if (!resp.ok) throw new Error("HTTP VIRHE: " + resp.status);
-
-        const html = await resp.text();
-        debug("Lista ladattu (" + html.length + " merkkiä)");
+        debug("Haetaan listaa…");
+        
+        const html = await safeFetch(listUrl);   // 🔥 VAKAA HAKU
+        
+        debug("Lista ladattu onnistuneesti");
 
         const links = [...html.matchAll(/href="(\/avoimet-tyopaikat\/[^"]+)"/g)]
                       .map(m => "https://tyomarkkinatori.fi" + m[1]);
 
-        debug("Löydetty " + links.length + " ilmoitusta");
+        debug("Löytyi " + links.length + " ilmoitusta");
 
         for (let i = 0; i < links.length; i++) {
-            debug((i+1) + "/" + links.length + ": " + links[i]);
-
-            // Hidas simulaatio jotta näet etenemisen
+            debug(`(${i+1}/${links.length}) ${links[i]}`);
             await new Promise(r => setTimeout(r, 200));
         }
 
@@ -99,14 +63,4 @@ async function startAudit() {
         debug("VIRHE: " + e.message);
     }
 }
-
-/* ===============================
-   🔥 NAPPIPAINALLUS
-   =============================== */
-document.getElementById("startBtn").addEventListener("click", function() {
-    document.getElementById("errorBox").style.display = "none";
-    document.getElementById("debugBox").innerText = "";
-    debug("Nappi painettu");
-    startAudit();
-});
 </script>
