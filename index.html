@@ -20,31 +20,32 @@ button { padding: 12px; width: 100%; margin-top: 15px; }
 <div id="result"></div>
 
 <script>
-// Sinun Cloudflare Proxy
+// Sinun Cloudflare proxysi
 const proxy = "https://empty-base-14ae.mikko-hallamaa.workers.dev/?url=";
 
-// Kiinteä API-osoite (vastaa TM:n hakua)
+// Työmarkkinatorin oikea API (vastaa 3 päivän, Pirkanmaan hakua)
 const tmApiUrl =
-  "https://paikat.te-palvelut.fi/openapi/v1/search?ae=NOW&f=MAX_3_DAYS&p=0&ps=90&r=06";
+  "https://paikat.te-palvelut.fi/open-api/v1/tyopaikat?alueet=06&vuorokausimaara=3&sivu=1&sivukoko=90";
 
 async function audit() {
     const result = document.getElementById("result");
     result.textContent = "Ladataan...";
 
     try {
-        // API haetaan Cloudflare Proxyn kautta -> CORS ohitettu
+        // API haetaan proxyn kautta → CORS toimii
         const resp = await fetch(proxy + encodeURIComponent(tmApiUrl));
         const data = await resp.json();
 
-        const count = data.count || 0;
+        // Oikea avain: työpaikat löytyvät datan listasta
+        const count = data.tyopaikat?.length || 0;
         const passed = count;
 
         result.innerHTML = `
             <strong>Löydetyt ilmoitukset:</strong> ${count}<br>
             <strong>Hyväksytyt:</strong> ${passed}
         `;
-
-    } catch (err) {
+    }
+    catch (err) {
         result.textContent = "Virhe: " + err.message;
     }
 }
