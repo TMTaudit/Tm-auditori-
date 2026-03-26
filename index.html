@@ -23,7 +23,6 @@ input, button { padding: 10px; width: 100%; margin-top: 10px; }
 <script>
 const proxy = "https://empty-base-14ae.mikko-hallamaa.workers.dev/?url=";
 
-// Tämä on ainoa funktio — ei mitään ylimääräistä
 async function audit() {
     const url = document.getElementById("tmInput").value.trim();
     const result = document.getElementById("result");
@@ -33,12 +32,7 @@ async function audit() {
         const resp = await fetch(proxy + encodeURIComponent(url));
         const html = await resp.text();
 
-        // Lasketaan montako työpaikkailmoitusta löytyy
-        // TM-sivulla ne ovat <article> -elementtejä (vahvistettu TM-sivulta)
         const count = (html.match(/<article/gi) || []).length;
-
-        // Tässä voit määritellä kriteerin "läpi menolle"
-        // Oletetaan että kaikki löytyneet ovat “hyväksyttyjä”
         const passed = count;
 
         result.innerHTML = `
