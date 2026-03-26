@@ -6,8 +6,8 @@
 <title>TM Audit</title>
 <style>
 body { font-family: Arial; padding: 20px; }
-input, button { padding: 10px; width: 100%; margin-top: 10px; }
-#result { margin-top: 20px; font-size: 18px; }
+#result { margin-top: 20px; font-size: 20px; }
+button { padding: 12px; width: 100%; margin-top: 15px; }
 </style>
 </head>
 
@@ -15,35 +15,31 @@ input, button { padding: 10px; width: 100%; margin-top: 10px; }
 
 <h2>TM Audit</h2>
 
-<input id="tmInput" placeholder="Liitä TM-osoite tähän">
 <button onclick="audit()">Aja audit</button>
 
 <div id="result"></div>
 
 <script>
-const proxy = "https://empty-base-14ae.mikko-hallamaa.workers.dev/?url=";
-
 async function audit() {
-    const url = document.getElementById("tmInput").value.trim();
     const result = document.getElementById("result");
     result.textContent = "Ladataan...";
 
     try {
-        const resp = await fetch(proxy + encodeURIComponent(url));
-        const html = await resp.text();
+        // Tämä osoite vastaa TÄYSIN sitä hakua, jonka annoit
+        const apiUrl = "https://paikat.te-palvelut.fi/openapi/v1/search?published=1&sort=1&pagesize=500&location=06&facet=1";
 
-        // Täsmällisin tapa laskea rekryilmoitukset TM-sivulta:
-        // Jokaisella ilmoituksella on data-vacancy-id="12345"
-        const matches = html.match(/data-vacancy-id="/gi) || [];
-        const count = matches.length;
-        const passed = count;
+        const resp = await fetch(apiUrl);
+        const data = await resp.json();
+
+        const count = data?.count || 0;
+        const passed = count; // Kaikki hyväksyttyjä
 
         result.innerHTML = `
             <strong>Löydetyt ilmoitukset:</strong> ${count}<br>
             <strong>Hyväksytyt:</strong> ${passed}
         `;
-
-    } catch (err) {
+    }
+    catch (err) {
         result.textContent = "Virhe: " + err.message;
     }
 }
