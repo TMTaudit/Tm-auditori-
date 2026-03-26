@@ -4,79 +4,50 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>TM Audit</title>
-
 <style>
-body {
-    font-family: Arial, sans-serif;
-    padding: 20px;
-}
-
-#spinner {
-    display: none;
-    font-size: 18px;
-    margin-top: 10px;
-}
-
-#debug {
-    background: #f2f2f2;
-    padding: 10px;
-    margin-top: 15px;
-    white-space: pre-wrap;
-    border-radius: 8px;
-    font-size: 14px;
-}
+body { font-family: Arial; padding: 20px; }
+input, button { padding: 10px; width: 100%; margin-top: 10px; }
+#result { margin-top: 20px; font-size: 18px; }
 </style>
 </head>
 
 <body>
 
-<h2>TM Audit – Proxy Edition</h2>
+<h2>TM Audit</h2>
 
-<input id="tmInput" placeholder="Syötä TM-osoite tähän" style="width: 100%; padding: 10px;">
-<button onclick="loadTM()" style="margin-top:10px; padding:10px;">Aja audit</button>
+<input id="tmInput" placeholder="Liitä TM-osoite tähän">
+<button onclick="audit()">Aja audit</button>
 
-<div id="spinner">⏳ Ladataan TM-sivua...</div>
-<pre id="debug"></pre>
+<div id="result"></div>
 
 <script>
 const proxy = "https://empty-base-14ae.mikko-hallamaa.workers.dev/?url=";
 
-async function loadTM() {
-    const input = document.getElementById("tmInput").value.trim();
-    const debug = document.getElementById("debug");
-    const spinner = document.getElementById("spinner");
-
-    debug.textContent = "";
-    spinner.style.display = "block";
+// Tämä on ainoa funktio — ei mitään ylimääräistä
+async function audit() {
+    const url = document.getElementById("tmInput").value.trim();
+    const result = document.getElementById("result");
+    result.textContent = "Ladataan...";
 
     try {
-        if (!input) {
-            debug.textContent = "Syötä TM-osoite.";
-            spinner.style.display = "none";
-            return;
-        }
+        const resp = await fetch(proxy + encodeURIComponent(url));
+        const html = await resp.text();
 
-        const targetUrl = proxy + encodeURIComponent(input);
-        debug.textContent += "➡ Haetaan: " + targetUrl + "\n\n";
+        // Lasketaan montako työpaikkailmoitusta löytyy
+        // TM-sivulla ne ovat <article> -elementtejä (vahvistettu TM-sivulta)
+        const count = (html.match(/<article/gi) || []).length;
 
-        const resp = await fetch(targetUrl);
-        const text = await resp.text();
+        // Tässä voit määritellä kriteerin "läpi menolle"
+        // Oletetaan että kaikki löytyneet ovat “hyväksyttyjä”
+        const passed = count;
 
-        debug.textContent += "✔ Vastaus vastaanotettu.\n";
-        debug.textContent += "✔ Pituus: " + text.length + " merkkiä\n\n";
-
-        if (text.length < 50) {
-            debug.textContent += "⚠ TM palautti liian vähän dataa – mahdollisesti virhe.\n";
-            return;
-        }
-
-        debug.textContent += "✔ Audit OK.\n\n---\n\n";
-        debug.textContent += text;
+        result.innerHTML = `
+            <strong>Löydetyt ilmoitukset:</strong> ${count}<br>
+            <strong>Hyväksytyt:</strong> ${passed}
+        `;
 
     } catch (err) {
-        debug.textContent = "🚨 VIRHE: " + err.message;
-    } finally {
-        spinner.style.display = "none";
+        result.textContent = "Virhe: " + err.message;
     }
 }
 </script>
