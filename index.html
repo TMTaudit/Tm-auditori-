@@ -32,7 +32,10 @@ async function audit() {
         const resp = await fetch(proxy + encodeURIComponent(url));
         const html = await resp.text();
 
-        const count = (html.match(/<article/gi) || []).length;
+        // Täsmällisin tapa laskea rekryilmoitukset TM-sivulta:
+        // Jokaisella ilmoituksella on data-vacancy-id="12345"
+        const matches = html.match(/data-vacancy-id="/gi) || [];
+        const count = matches.length;
         const passed = count;
 
         result.innerHTML = `
