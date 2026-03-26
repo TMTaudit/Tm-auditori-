@@ -1,131 +1,85 @@
-<!-- ================================
-     🔥 KOKO TÄYSI AUDIT-KONE YHDESSÄ
-     ================================ -->
+<!DOCTYPE html>
+<html lang="fi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TM Audit</title>
 
-<!-- NAPPI -->
-<button id="startBtn" style="
-    padding:15px 25px;
-    background:#4CAF50;
-    color:white;
-    border:none;
-    border-radius:6px;
-    font-size:18px;
-    margin-top:20px;
-    display:block;
-">Käynnistä tarkistus</button>
+<style>
+body {
+    font-family: Arial, sans-serif;
+    padding: 20px;
+}
 
-<!-- VIRHEBOXI -->
-<div id="errorBox" style="
-    display:none;
-    background:#ffdddd;
-    color:#900;
-    padding:15px;
-    margin-top:20px;
-    border-left:5px solid #900;
-    font-size:16px;
-    white-space:pre-wrap;
-"></div>
+#spinner {
+    display: none;
+    font-size: 18px;
+    margin-top: 10px;
+}
 
-<!-- DEBUGBOXI -->
-<div id="debugBox" style="
-    margin-top:20px;
-    background:#000;
-    color:#0f0;
-    padding:10px;
-    font-size:14px;
-    white-space:pre-wrap;
-    height:200px;
-    overflow-y:auto;
-"></div>
+#debug {
+    background: #f2f2f2;
+    padding: 10px;
+    margin-top: 15px;
+    white-space: pre-wrap;
+    border-radius: 8px;
+    font-size: 14px;
+}
+</style>
+</head>
 
-<!-- ================================
-     🔥 AUDITIN TÄYSI LOGIIKKA
-     ================================ -->
+<body>
+
+<h2>TM Audit – Proxy Edition</h2>
+
+<input id="tmInput" placeholder="Syötä TM-osoite tähän" style="width: 100%; padding: 10px;">
+<button onclick="loadTM()" style="margin-top:10px; padding:10px;">Aja audit</button>
+
+<div id="spinner">⏳ Ladataan TM-sivua...</div>
+<pre id="debug"></pre>
+
 <script>
-function showErrorBox(msg){
-    const box=document.getElementById("errorBox");
-    box.style.display="block";
-    box.innerText=msg;
-}
+const proxy = "https://empty-base-14ae.mikko-hallamaa.workers.dev/?url=";
 
-function debug(msg){
-    const box=document.getElementById("debugBox");
-    box.innerText += msg + "\n";
-    box.scrollTop = box.scrollHeight;
-}
+async function loadTM() {
+    const input = document.getElementById("tmInput").value.trim();
+    const debug = document.getElementById("debug");
+    const spinner = document.getElementById("spinner");
 
-/* ================================
-   🔥 TM-SIVUN HAKU IFRAMELLA
-   (Ainoa tapa joka toimii 2026)
-   ================================ */
-async function loadPageThroughIframe(url){
-    return new Promise((resolve,reject)=>{
-        debug("Ladataan iframe: " + url);
+    debug.textContent = "";
+    spinner.style.display = "block";
 
-        const iframe=document.createElement("iframe");
-        iframe.style.display="none";
-        iframe.src=url;
-
-        iframe.onload=()=>{
-            try{
-                const doc=iframe.contentDocument || iframe.contentWindow.document;
-                const html=doc.documentElement.innerHTML;
-                document.body.removeChild(iframe);
-                resolve(html);
-            }catch(e){
-                document.body.removeChild(iframe);
-                reject(e);
-            }
-        };
-
-        iframe.onerror=()=>{
-            document.body.removeChild(iframe);
-            reject(new Error("Iframe load error"));
-        };
-
-        document.body.appendChild(iframe);
-    });
-}
-
-/* ================================
-   🔥 PÄÄAUDIT – EI PROXYA
-   ================================ */
-async function startAudit(){
-    debug("Audit käynnistetty…");
-
-    try{
-        const url="https://tyomarkkinatori.fi/henkiloasiakkaat/avoimet-tyopaikat?pa=MAX_1_DAY&r=06";
-        debug("Haetaan TM-sivu suoraan selaimesta…");
-
-        const html = await loadPageThroughIframe(url);
-
-        debug("Sivu ladattu. HTML-merkkien määrä: " + html.length);
-
-        const links=[...html.matchAll(/href="(\/avoimet-tyopaikat\/[^"]+)"/g)]
-                     .map(m=>"https://tyomarkkinatori.fi"+m[1]);
-
-        debug("Löytyi ilmoituksia: " + links.length);
-
-        for(let i=0;i<links.length;i++){
-            debug((i+1)+"/"+links.length+" → "+links[i]);
-            await new Promise(r=>setTimeout(r,150));
+    try {
+        if (!input) {
+            debug.textContent = "Syötä TM-osoite.";
+            spinner.style.display = "none";
+            return;
         }
 
-        debug("✔ Tarkistus valmis!");
-    }
-    catch(e){
-        showErrorBox("VIRHE:\n"+e.message);
-        debug("VIRHE: "+e.message);
+        const targetUrl = proxy + encodeURIComponent(input);
+        debug.textContent += "➡ Haetaan: " + targetUrl + "\n\n";
+
+        const resp = await fetch(targetUrl);
+        const text = await resp.text();
+
+        debug.textContent += "✔ Vastaus vastaanotettu.\n";
+        debug.textContent += "✔ Pituus: " + text.length + " merkkiä\n\n";
+
+        if (text.length < 50) {
+            debug.textContent += "⚠ TM palautti liian vähän dataa – mahdollisesti virhe.\n";
+            return;
+        }
+
+        debug.textContent += "✔ Audit OK.\n\n---\n\n";
+        debug.textContent += text;
+
+    } catch (err) {
+        debug.textContent = "🚨 VIRHE: " + err.message;
+    } finally {
+        spinner.style.display = "none";
     }
 }
-
-/* ================================
-   🔥 NAPPI
-   ================================ */
-document.getElementById("startBtn").onclick=()=>{
-    document.getElementById("errorBox").style.display="none";
-    document.getElementById("debugBox").innerText="";
-    debug("Nappi painettu");
-    startAudit();
-};
 </script>
+
+</body>
+</html>
