@@ -20,26 +20,31 @@ button { padding: 12px; width: 100%; margin-top: 15px; }
 <div id="result"></div>
 
 <script>
+// Sinun Cloudflare Proxy
+const proxy = "https://empty-base-14ae.mikko-hallamaa.workers.dev/?url=";
+
+// Kiinteä API-osoite (vastaa TM:n hakua)
+const tmApiUrl =
+  "https://paikat.te-palvelut.fi/openapi/v1/search?ae=NOW&f=MAX_3_DAYS&p=0&ps=90&r=06";
+
 async function audit() {
     const result = document.getElementById("result");
     result.textContent = "Ladataan...";
 
     try {
-        // Tämä osoite vastaa TÄYSIN sitä hakua, jonka annoit
-        const apiUrl = "https://paikat.te-palvelut.fi/openapi/v1/search?published=1&sort=1&pagesize=500&location=06&facet=1";
-
-        const resp = await fetch(apiUrl);
+        // API haetaan Cloudflare Proxyn kautta -> CORS ohitettu
+        const resp = await fetch(proxy + encodeURIComponent(tmApiUrl));
         const data = await resp.json();
 
-        const count = data?.count || 0;
-        const passed = count; // Kaikki hyväksyttyjä
+        const count = data.count || 0;
+        const passed = count;
 
         result.innerHTML = `
             <strong>Löydetyt ilmoitukset:</strong> ${count}<br>
             <strong>Hyväksytyt:</strong> ${passed}
         `;
-    }
-    catch (err) {
+
+    } catch (err) {
         result.textContent = "Virhe: " + err.message;
     }
 }
